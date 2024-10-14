@@ -8,14 +8,14 @@ import random
 
 # Define the schema for the output
 client = Together(api_key=os.environ.get('TOGETHER_API_KEY'))
-times = 16 
+times = 16
 
 # Mock-up for the Simple QA model's schema:
 class SimpleQA(BaseModel):
     Answer: str = Field(description="The Answer to the Question")
-    Question: str = Field(description="The Copied Asked Question")
+    QuestionType: str = Field(description="The Copied Asked Question")
     AnswerList: list[str] = Field(
-    description="A list of multiple gueses for this question"
+    description="A list of answers for this question"
     )
 
 # Define the transcript
@@ -50,7 +50,7 @@ def generate_greedy_response(four_shot_list=four_shot_prompt_sample, question_li
         prompt_messages = [
             {
                 "role": "system",
-                "content": "The following is 4 simple Q&A Examples. Plesae follow the given 4 examples to return one simple answer. No explanation needed. Only response the answer. Only answer in JSON."
+                "content": "The following is 4 simple Q&A Examples. Plesae follow the given 4 examples to return one simple answer. \n No explanation needed. Only outputs 2-3 tokens. \n Only answer in JSON."
             },
             {
                 "role": "system",
