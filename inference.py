@@ -8,7 +8,7 @@ import random
 
 # Define the schema for the output
 client = Together(api_key=os.environ.get('TOGETHER_API_KEY'))
-times = 2
+times = 16 
 
 # Mock-up for the Simple QA model's schema:
 class SimpleQA(BaseModel):
