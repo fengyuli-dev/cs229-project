@@ -2,7 +2,6 @@ import json
 import os
 from together import Together
 from pydantic import BaseModel, Field
-import random
 
 
 
@@ -77,7 +76,7 @@ def generate_greedy_response(four_shot_list=four_shot_prompt_sample, question_li
 
     return output
 
-# Sampling function: temperature = 16, sampled 16 times
+# Sampling function: temperature = 0.5, sampled 16 times
 def generate_sampled_responses(four_shot_list=four_shot_prompt_sample, question_list=transcript):
     responses = []
     for question in question_list:
