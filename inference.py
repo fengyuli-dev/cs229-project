@@ -88,7 +88,7 @@ def generate_sampled_responses(four_shot_list=four_shot_prompt_sample, question_
             },
             {
                 "role": "system",
-                "content": "\n".join([f"Q: {q['Q']}\nA: {q['A']}" for q in four_shot_prompt_sample])
+                "content": "\n".join([f"Q: {q['Q']}\nA: {q['A']}" for q in four_shot_list])
             },
             {
                 "role": "user",
