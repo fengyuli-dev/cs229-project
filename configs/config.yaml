@@ -74,8 +74,8 @@ dtype: bf16
 
 # Logging
 metric_logger:
-  _component_: torchtune.training.metric_logging.DiskLogger
-  log_dir: ${output_dir}
-output_dir: /tmp/full-llama3.1-finetune
+  _component_: torchtune.utils.metric_logging.WandBLogger
+  project: cs229
+output_dir: output/
 log_every_n_steps: 1
 log_peak_memory_stats: False
