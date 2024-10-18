@@ -41,3 +41,4 @@ build/
 paths.py
 
 output/
+wandb/
