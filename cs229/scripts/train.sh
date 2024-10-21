@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CUDA_VISIBLE_DEVICES=5
+CUDA_VISIBLE_DEVICES=4,5,6,7
 
 # Clear prev output
 rm -rf output
