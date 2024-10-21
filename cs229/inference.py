@@ -33,7 +33,7 @@ four_shot_prompt_sample = [
         "A": "The user's first task is to make breakfast."
     },
     {
-        "Q": " What kind of work does Maurice Blondel do?",
+        "Q": "What kind of work does Maurice Blondel do?",
         "A": "actor"
     },
     {

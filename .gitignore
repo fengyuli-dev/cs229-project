@@ -42,3 +42,5 @@ paths.py
 
 output/
 wandb/
+dataset/
+*.pdf
