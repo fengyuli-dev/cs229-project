@@ -14,7 +14,7 @@ class SimpleQA(BaseModel):
     Answer: str = Field(description="The Answer to the Question")
     QuestionType: str = Field(description="The Copied Asked Question")
     AnswerList: list[str] = Field(
-    description="A list of answers for this question"
+        description="A list of answers for this question"
     )
 
 # Define the transcript
@@ -82,8 +82,12 @@ def generate_sampled_responses(four_shot_list=four_shot_prompt_sample, question_
     for question in question_list:
         prompt_messages = [
             {
+               # The code you provided seems to be a Python script that generates responses to
+               # questions using a pre-trained model for simple Q&A. The script includes functions to
+               # generate responses using a greedy approach and a sampled approach with a specified
+               # number of samples. It also saves the outputs to JSON files.
                 "role": "system",
-                "content": "The following is 4 simple Q&A Examples. Plesae follow the given 4 examples to return one simple answer. No explanation needed. Only response the answer. Only answer in JSON."
+                "content": "The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. No explanation needed. Only response the answer. Only answer in JSON."
             },
             {
                 "role": "system",
