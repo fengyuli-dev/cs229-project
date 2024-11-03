@@ -100,6 +100,9 @@ def is_known(question, gt_answer, relation):
     # Access llama API to check if question-answer pair is known.
     # Always save inference results to a cache file
     # cache = json.load(open(os.path.join(LLAMA_CACHE)))
+
+    # TODO: load cache
+
     # get 4-shot prompt
     prompts = exemplars[relation]
     greedy_answers = list()
