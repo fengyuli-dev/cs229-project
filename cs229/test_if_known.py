@@ -16,6 +16,9 @@ val_dataset = os.path.join(DATASET_PATH, "dev")
 
 Sample = namedtuple("Sample", ["relation", "question", "gt_answers", "is_train"])
 
+cache_dict = dict()
+CacheResponse = namedtuple("Response", ["gt_answers", "greedy_response", "sampled_response", "known_level"])
+
 # filtering 1: 12 relations for in distribution train/test dataset, 7 for OOD test set 
 in_dist_relations = ['P17', 'P19', 'P26', 'P36', 'P40', 'P69', 'P131', 'P136', 'P264', 'P495', 'P740', 'P800']
 
@@ -32,7 +35,7 @@ def generate_exemplars(N_ex = 10, k_shot = 4):
         qa_pairs = [pair for pair in qa_pairs if len(pair["answers"]) == 1]
         # print(f"Length of pairs in {relation} after removing multiple answers: {len(qa_pairs)}")
         sampled_pairs = random.choices(qa_pairs, k=k_shot * N_ex)
-        k_shot_prompts = [[sampled_pairs[i*k_shot: (i+1)*k_shot]] for i in range(N_ex)]
+        k_shot_prompts = [sampled_pairs[i*k_shot: (i+1)*k_shot] for i in range(N_ex)]
         exemplar_dict[relation] = k_shot_prompts
     location = os.path.join(DATASET_PATH, "exemplars.json")
     with open(location, "w") as file:
@@ -41,6 +44,7 @@ def generate_exemplars(N_ex = 10, k_shot = 4):
 
 
 
+exemplars = json.load(open(os.path.join(DATASET_PATH, "exemplars.json")))
 
 def test_all_samples():
     train_known = []
@@ -62,7 +66,7 @@ def test_all_samples():
             if len(sample.gt_answers) > 1: 
                 print(sample)
                 continue
-            if is_known(sample.question, sample.gt_answers):
+            if is_known(sample.question, sample.gt_answers, relation):
                 if is_train:
                     train_known.append(sample)
                 else:
@@ -73,6 +77,9 @@ def test_all_samples():
                 else:
                     val_unknown.append(sample)
             count += 1
+        with open(os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json"), "w") as file:
+            json.dump((cache_dict), file)
+        cache_dict.clear()
 
     json.dump((train_known), open(os.path.join(DATASET_PATH, "train_known.json"), "w"))
     json.dump(
@@ -89,21 +96,37 @@ def test_all_samples():
     print(f"# unknown in val: {len(val_unknown)}")
 
 
-def is_known(question, gt_answer):
+def is_known(question, gt_answer, relation):
     # Access llama API to check if question-answer pair is known.
     # Always save inference results to a cache file
     # cache = json.load(open(os.path.join(LLAMA_CACHE)))
+    # get 4-shot prompt
+    prompts = exemplars[relation]
+    greedy_answers = list()
+    sampled_answers = list()
+    for prompt in prompts:
+        question_ls = [question]
+        greedy_ans = generate_greedy_response(prompt, question_ls) 
+        sampled_ans = generate_sampled_responses(prompt, question_ls) 
+        greedy_answers.extend(greedy_ans)
+        sampled_answers.extend(sampled_ans)
 
-    # TODO: WIP
-    return True
-    # get highly known from greedy decoding
-    question_ls = [question]
-    greedy_ans = generate_greedy_response(four_shot_prompt, question)
-    # get maybe_known & weakly_known from temperature sampling
-    sampled_ans = generate_sampled_responses(four_shot_prompt, question_ls)
+    # use Exact Match to compare answers with ground truth answer and calculate P_correct
+    P_correct_greedy = greedy_answers.count(gt_answer) / len(greedy_answers)
+    P_correct_sampled = sampled_answers.count(gt_answer) / len(sampled_answers)
+    if P_correct_greedy == 1:
+        known_level = "highly_known"
+    elif P_correct_greedy > 0:
+        known_level = "maybe_correct"
+    elif P_correct_sampled > 0:
+        known_level = "weakly_correct"
+    else:
+        known_level = "unknown"
+    # save greedy_answers and sampled_answers
+    cache = CacheResponse(gt_answer, greedy_answers, sampled_answers, known_level)
+    cache_dict[question] = cache
 
-    # use Exact Match to compare answers with ground truth answer
-    return highly_known or weakly_known
+    return P_correct_greedy > 0 or P_correct_sampled > 0
 
 
 if __name__ == "__main__":
