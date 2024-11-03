@@ -19,7 +19,7 @@ class SimpleQA(BaseModel):
 
 # Define the transcript
 transcript = [
-    "Q: What is the capital of Toledo District?\nA:"
+    "What is the capital of Toledo District?\nA:"
 ]
 
 # Define 4-shot prompt examples
@@ -49,17 +49,14 @@ def generate_greedy_response(four_shot_list=four_shot_prompt_sample, question_li
         prompt_messages = [
             {
                 "role": "system",
-                "content": "The following is 4 simple Q&A Examples. Plesae follow the given 4 examples to return one simple answer. \n No explanation needed. Only outputs 2-3 tokens. \n Only answer in JSON."
-            },
-            {
-                "role": "system",
-                "content": "\n".join([f"Q: {q['Q']}\nA: {q['A']}" for q in four_shot_list])
-            },
-            {
-                "role": "user",
-                "content": question
-            },
+                "content": "The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n No explanation needed. Only outputs 2-3 tokens. \n Only answer in JSON."
+            }
         ]
+        for qa_pair in four_shot_list:
+            prompt_messages.append({"role": "user", "content": f"Q: {qa_pair['Q']}"})
+            prompt_messages.append({"role": "assistant", "content": f"A: {qa_pair['A']}"})
+        prompt_messages.append({"role": "user", "content": f"Q: {question}"})
+        
         extract = client.chat.completions.create(
             messages=prompt_messages,
             model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
