@@ -126,6 +126,46 @@ def generate_greedy_response(four_shot_list=four_shot_prompt_sample, question=tr
     print(json.dumps(output, indent=2))
     print(output["Answer"])
     return output["Answer"]
+    for question in question_list:
+        if not islocal:
+            prompt_messages = [
+                {
+                    "role": "system",
+                    "content": "The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n No explanation needed. Only outputs 2-3 tokens. \n Only answer in JSON."
+                }
+            ]
+            for qa_pair in four_shot_list:
+                prompt_messages.append({"role": "user", "content": f"Q: {qa_pair['question']}"})
+                prompt_messages.append({"role": "assistant", "content": f"A: {qa_pair['gt_answer']}"})
+            prompt_messages.append({"role": "user", "content": f"Q: {question}"})
+            
+            extract = client.chat.completions.create(
+                messages=prompt_messages,
+                model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+                temperature=0,  # Greedy approach
+                response_format={
+                    "type": "json_object",
+                    "schema": SimpleQA.model_json_schema(),
+                }
+            )
+            output = json.loads(extract.choices[0].message.content)
+        else:
+            sampled_question = "\n".join([f"Q: {q['Q']}\nA: {q['A']}" for q in four_shot_list])
+            prompt_messages = [
+                SystemMessage(content="The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n No explanation needed. Only outputs 2-3 tokens. \n Only answer in JSON format {'Answer': the question answer, 'questiontype': the copied question} \n"),
+                SystemMessage(content=sampled_question),
+                UserMessage(content= f"Q: {question}"),
+            ]
+            llama = LlamaForInference(
+                ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+                temperature=0
+            )
+            output = llama.generate(prompt_messages).content
+        print("Greedy Response:")
+        print(json.dumps(output, indent=2))
+        responses.append(output)
+
+    return output
 
 # Sampling function: temperature = 0.5, sampled 16 times
 def generate_sampled_responses(four_shot_list=four_shot_prompt_sample, question=transcript[0], islocal=False):
