@@ -97,8 +97,8 @@ def generate_greedy_response(four_shot_list=four_shot_prompt_sample, question_li
                 }
             ]
             for qa_pair in four_shot_list:
-                prompt_messages.append({"role": "user", "content": f"Q: {qa_pair['Q']}"})
-                prompt_messages.append({"role": "assistant", "content": f"A: {qa_pair['A']}"})
+                prompt_messages.append({"role": "user", "content": f"Q: {qa_pair['question']}"})
+                prompt_messages.append({"role": "assistant", "content": f"A: {qa_pair['gt_answer']}"})
             prompt_messages.append({"role": "user", "content": f"Q: {question}"})
             
             extract = client.chat.completions.create(

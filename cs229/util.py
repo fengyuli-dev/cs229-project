@@ -14,10 +14,10 @@ from inference import generate_greedy_response, generate_sampled_responses
 train_dataset = os.path.join(DATASET_PATH, "train")
 val_dataset = os.path.join(DATASET_PATH, "dev")
 
-Sample = namedtuple("Sample", ["relation", "question", "gt_answers", "is_train"])
+Sample = namedtuple("Sample", ["relation", "question", "gt_answer", "is_train"])
 
 cache_dict = dict()
-CacheResponse = namedtuple("Response", ["gt_answers", "greedy_response", "sampled_response", "known_level"])
+CacheResponse = namedtuple("Response", ["gt_answer", "greedy_response", "sampled_response", "known_level"])
 
 # filtering 1: 12 relations for in distribution train/test dataset, 7 for OOD test set 
 in_dist_relations = ['P17', 'P19', 'P26', 'P36', 'P40', 'P69', 'P131', 'P136', 'P264', 'P495', 'P740', 'P800']
@@ -34,7 +34,7 @@ def generate_exemplars(N_ex = 10, k_shot = 4):
         # print(f"Length of pairs in {relation}: {len(qa_pairs)}")
         qa_pairs = [pair for pair in qa_pairs if len(pair["answers"]) == 1]
         # print(f"Length of pairs in {relation} after removing multiple answers: {len(qa_pairs)}")
-        sampled_pairs = random.choices(qa_pairs, k=k_shot * N_ex)
+        sampled_pairs = random.sample(qa_pairs, k=k_shot * N_ex)
         k_shot_prompts = [sampled_pairs[i*k_shot: (i+1)*k_shot] for i in range(N_ex)]
         exemplar_dict[relation] = k_shot_prompts
     location = os.path.join(DATASET_PATH, "exemplars.json")
@@ -42,6 +42,12 @@ def generate_exemplars(N_ex = 10, k_shot = 4):
         json.dump(exemplar_dict, file)
     print(f"Exemplars saved at {location}")
 
+def generate_dataset_json(percentage_of_known = 0.5):
+    train_known = json.load(open(os.path.join(DATASET_PATH, "train_known.json")))
+    train_unknown = json.load(open(os.path.join(DATASET_PATH, "train_unknown.json")))
+    # TODO: incorporate percentage here
+    breakpoint()
+    data = [f"Q: {entry[1]} A: {entry[2]}" for entry in train_known]
 
 
 exemplars = json.load(open(os.path.join(DATASET_PATH, "exemplars.json")))
@@ -61,12 +67,13 @@ def test_all_samples():
             open(os.path.join(train_dataset if is_train else val_dataset, filename))
         )
         for qa_pair in tqdm(qa_pairs, desc=f"Processing {filename}"):
-            sample = Sample(relation, qa_pair["question"], qa_pair["answers"], is_train)
             # filtering 2: filter out examples with more than 1 correct answers, 4.2% in train, 3.9% in test
-            if len(sample.gt_answers) > 1: 
+            if len(qa_pair["answers"]) > 1: 
                 print(sample)
                 continue
-            if is_known(sample.question, sample.gt_answers, relation):
+            sample = Sample(relation, qa_pair["question"], qa_pair["answers"][0], is_train)
+            breakpoint()
+            if is_known(sample.question, sample.gt_answer, relation):
                 if is_train:
                     train_known.append(sample)
                 else:
