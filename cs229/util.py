@@ -6,6 +6,7 @@ from tqdm import tqdm
 import random
 from paths import *
 from inference import generate_greedy_response, generate_sampled_responses
+import argparse
 
 # filtering techniques
 # 1: 12 relations for in distribution train/test dataset, 7 for OOD test set 
@@ -19,9 +20,15 @@ Sample = namedtuple("Sample", ["relation", "question", "gt_answer", "is_train"])
 
 cache_dict = dict()
 CacheResponse = namedtuple("Response", ["gt_answer", "greedy_response", "sampled_response", "known_level"])
+os.makedirs(os.path.join(DATASET_PATH, "llama_cache"), exist_ok=True)
 
 # filtering 1: 12 relations for in distribution train/test dataset, 7 for OOD test set 
 in_dist_relations = ['P17', 'P19', 'P26', 'P36', 'P40', 'P69', 'P131', 'P136', 'P264', 'P495', 'P740', 'P800']
+
+if os.path.exists(os.path.join(DATASET_PATH, "exemplars.json")):
+    exemplars = json.load(open(os.path.join(DATASET_PATH, "exemplars.json")))
+else:
+    exemplars = None
 
 
 def clean_string(answer):
@@ -55,11 +62,9 @@ def generate_dataset_json(percentage_of_known = 0.5):
     train_known = json.load(open(os.path.join(DATASET_PATH, "train_known.json")))
     train_unknown = json.load(open(os.path.join(DATASET_PATH, "train_unknown.json")))
     # TODO: incorporate percentage here
-    breakpoint()
+    
     data = [f"Q: {entry[1]} A: {entry[2]}" for entry in train_known]
-
-
-exemplars = json.load(open(os.path.join(DATASET_PATH, "exemplars.json")))
+    json.dump((data), open(os.path.join(DATASET_PATH, "llama_all.json"), "w"))
 
 def test_all_samples():
     train_known = []
@@ -67,7 +72,6 @@ def test_all_samples():
     val_known = []
     val_unknown = []
     count = 0
-    breakpoint()
 
     for filename in tqdm(os.listdir(train_dataset) + os.listdir(val_dataset)):
         relation = filename.split(".")[0]
@@ -84,7 +88,6 @@ def test_all_samples():
                 print(qa_pair)
                 continue
             sample = Sample(relation, qa_pair["question"], qa_pair["answers"][0], is_train)
-            breakpoint()
             if is_known(sample.question, sample.gt_answer, relation):
                 if is_train:
                     train_known.append(sample)
@@ -114,17 +117,18 @@ def test_all_samples():
     print(f"# known in val: {len(val_known)}")
     print(f"# unknown in val: {len(val_unknown)}")
 
-
 def is_known(question, gt_answer, relation):
     # Access llama API to check if question-answer pair is known.
     # Always save inference results to a cache file
     # cache = json.load(open(os.path.join(LLAMA_CACHE)))
 
     # TODO: load cache
-    cache = json.load(open(os.path.join(DATASET_PATH, 'llama_cache', f'{relation}.json'), 'r'))
-    if question in cache:
-        known_level = cache[question][3]
-        return known_level != "unknown"
+    cache_location = os.path.join(DATASET_PATH, 'llama_cache', f'{relation}.json')
+    if os.path.exists(cache_location):
+        cache = json.load(open(cache_location, 'r'))
+        if question in cache:
+            known_level = cache[question][3]
+            return known_level != "unknown"
 
     # get 4-shot prompt
     prompts = exemplars[relation]
@@ -134,14 +138,12 @@ def is_known(question, gt_answer, relation):
         question_ls = [question]
         greedy_ans = generate_greedy_response(prompt, question_ls) 
         sampled_ans = generate_sampled_responses(prompt, question_ls) 
-        breakpoint()
         greedy_answers.append(clean_string(greedy_ans))
         sampled_ans = [clean_string(answer) for answer in sampled_ans]
         sampled_answers.extend(sampled_ans)
 
     # use Exact Match to compare answers with ground truth answer and calculate P_correct
     gt_answer = clean_string(gt_answer)
-    breakpoint()
     P_correct_greedy = greedy_answers.count(gt_answer) / len(greedy_answers)
     P_correct_sampled = sampled_answers.count(gt_answer) / len(sampled_answers)
     if P_correct_greedy == 1:
@@ -155,10 +157,42 @@ def is_known(question, gt_answer, relation):
     # save greedy_answers and sampled_answers
     cache = CacheResponse(gt_answer, greedy_answers, sampled_answers, known_level)
     cache_dict[question] = cache
+    with open(cache_location, "w") as file:
+        json.dump(cache_dict, file)
 
     return known_level != "unknown"
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    
+    # Positional arguments
+    parser.add_argument(
+        "--exemplars", 
+        action="store_true", 
+        help="Turn on if you are generating exemplars. "
+    )
+
+    parser.add_argument(
+        "--testall", 
+        action="store_true", 
+        help="Turn on if you are generating labels for all samples. Make sure to generate exemplars before running this."
+    )
+
+    parser.add_argument(
+        "--gendata", 
+        action="store_true", 
+        help="Generate dataset based on known & unknown labels. Make sure to run testall before attempting this."
+    )
+    args = parser.parse_args()
+    return args
 
 if __name__ == "__main__":
-    generate_exemplars()
-    test_all_samples()
+    args = parse_args()
+
+    if args.exemplars:
+        generate_exemplars()
+    elif args.testall:
+        test_all_samples()
+    elif args.gendata:
+        generate_dataset_json()
+    

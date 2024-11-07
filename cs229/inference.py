@@ -1,11 +1,18 @@
 import json
 import os
-from together import Together
 from pydantic import BaseModel, Field
 from typing import Optional
-from llama_models.llama3.api.datatypes import SystemMessage, UserMessage
-from llama_models.llama3.reference_impl.generation import Llama
 
+exists_local = False
+if exists_local:
+    from llama_models.llama3.api.datatypes import SystemMessage, UserMessage
+    from llama_models.llama3.reference_impl.generation import Llama
+from together import Together
+
+
+# Define the schema for the output
+client = Together(api_key=os.environ.get('TOGETHER_API_KEY'))
+times = 2
 
 class LlamaForInference:
     def __init__(
@@ -46,11 +53,16 @@ class LlamaForInference:
         )
         return result.generation
 
+if exists_local:
+    llama_greedy = LlamaForInference(
+                ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+                temperature=0
+            )
 
-# Define the schema for the output
-client = Together(api_key=os.environ.get('TOGETHER_API_KEY'))
-times = 2
-islocal = True #edited this flag
+    llama_sampled = LlamaForInference(
+                ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+                temperature=0.5
+            )
 
 # Mock-up for the Simple QA model's schema:
 class SimpleQA(BaseModel):
@@ -92,7 +104,7 @@ def generate_greedy_response(four_shot_list=four_shot_prompt_sample, question=tr
         prompt_messages = [
             {
                 "role": "system",
-                "content": "The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n ONLY OUTPUT 3 to 4 words. NO NEED TO explanation!  \n Only answer in JSON."
+                "content": "The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n ONLY OUTPUT 3 to 4 words. NO NEED TO explanation!  \n Only answer in JSON format {'Question': the copied question, 'Answer': the question answer}."
             },
             {
                 "role": "system",
@@ -122,17 +134,14 @@ def generate_greedy_response(four_shot_list=four_shot_prompt_sample, question=tr
     else: # local outputs
         sampled_question = "\n".join([f"Q: {q['question']}\nA: {q['answer']}" for q in four_shot_list])
         prompt_messages = [
-            SystemMessage(content="The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n ONLY OUTPUT 3 to 4 words. NO NEED TO explanation! \n Only answer in JSON format {'Answer': the question answer, 'questiontype': the copied question} \n"),
+            SystemMessage(content="The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n ONLY OUTPUT 3 to 4 words. NO NEED TO explanation! \n Only answer in JSON format {'Question': the copied question, 'Answer': the question answer}\n"),
             SystemMessage(content=sampled_question),
             UserMessage(content= f"Q: {question}"),
         ]
-        llama = LlamaForInference(
-            ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
-            temperature=0
-        )
-        output = llama.generate(prompt_messages).content
+        output = llama_greedy.generate(prompt_messages).content
+        output = json.loads(output)
     print("Greedy Response:")
-    print(json.dumps(output, indent=2))
+    # print(json.dumps(output, indent=2))
     print(output["Answer"])
     return output["Answer"]
 
@@ -175,11 +184,7 @@ def generate_sampled_responses(four_shot_list=four_shot_prompt_sample, question=
             UserMessage(content= f"Q: {question}"),
         ]
         for _ in range(times):
-            llama = LlamaForInference(
-                ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
-                temperature=0.5
-            )
-            output = llama.generate(prompt_messages).content
+            output = llama_sampled.generate(prompt_messages).content
             sampled_output.append(output["Answer"])
 
     print("Sampled Responses:")
