@@ -1,4 +1,5 @@
 import os
+import re
 import json
 from collections import namedtuple
 from tqdm import tqdm
@@ -22,6 +23,14 @@ CacheResponse = namedtuple("Response", ["gt_answer", "greedy_response", "sampled
 # filtering 1: 12 relations for in distribution train/test dataset, 7 for OOD test set 
 in_dist_relations = ['P17', 'P19', 'P26', 'P36', 'P40', 'P69', 'P131', 'P136', 'P264', 'P495', 'P740', 'P800']
 
+
+def clean_string(answer):
+    answer = answer.lower()
+    filter = re.compile(r'[^\w\s]')
+    answer = filter.sub('', answer)
+    answer = ' '.join(answer.split())
+    return answer
+
 def generate_exemplars(N_ex = 10, k_shot = 4):
     exemplar_dict = dict()
     for filename in tqdm(os.listdir(train_dataset)):
@@ -31,8 +40,8 @@ def generate_exemplars(N_ex = 10, k_shot = 4):
         qa_pairs = json.load(
             open(os.path.join(train_dataset, filename))
         )
-        # print(f"Length of pairs in {relation}: {len(qa_pairs)}")
-        qa_pairs = [pair for pair in qa_pairs if len(pair["answers"]) == 1]
+        print(f"Length of pairs in {relation}: {len(qa_pairs)}")
+        qa_pairs = [dict({'question': pair["question"], 'answer': pair["answers"][0]}) for pair in qa_pairs if len(pair["answers"]) == 1]
         # print(f"Length of pairs in {relation} after removing multiple answers: {len(qa_pairs)}")
         sampled_pairs = random.sample(qa_pairs, k=k_shot * N_ex)
         k_shot_prompts = [sampled_pairs[i*k_shot: (i+1)*k_shot] for i in range(N_ex)]
@@ -58,6 +67,8 @@ def test_all_samples():
     val_known = []
     val_unknown = []
     count = 0
+    breakpoint()
+
     for filename in tqdm(os.listdir(train_dataset) + os.listdir(val_dataset)):
         relation = filename.split(".")[0]
         if relation not in in_dist_relations:
@@ -66,10 +77,11 @@ def test_all_samples():
         qa_pairs = json.load(
             open(os.path.join(train_dataset if is_train else val_dataset, filename))
         )
+        exemplar_questions = [qs["question"] for group in exemplars[relation] for qs in group]
         for qa_pair in tqdm(qa_pairs, desc=f"Processing {filename}"):
             # filtering 2: filter out examples with more than 1 correct answers, 4.2% in train, 3.9% in test
-            if len(qa_pair["answers"]) > 1: 
-                print(sample)
+            if len(qa_pair["answers"]) > 1 or qa_pair["question"] in exemplar_questions: 
+                print(qa_pair)
                 continue
             sample = Sample(relation, qa_pair["question"], qa_pair["answers"][0], is_train)
             breakpoint()
@@ -109,6 +121,10 @@ def is_known(question, gt_answer, relation):
     # cache = json.load(open(os.path.join(LLAMA_CACHE)))
 
     # TODO: load cache
+    cache = json.load(open(os.path.join(DATASET_PATH, 'llama_cache', f'{relation}.json'), 'r'))
+    if question in cache:
+        known_level = cache[question][3]
+        return known_level != "unknown"
 
     # get 4-shot prompt
     prompts = exemplars[relation]
@@ -118,27 +134,31 @@ def is_known(question, gt_answer, relation):
         question_ls = [question]
         greedy_ans = generate_greedy_response(prompt, question_ls) 
         sampled_ans = generate_sampled_responses(prompt, question_ls) 
-        greedy_answers.extend(greedy_ans)
+        breakpoint()
+        greedy_answers.append(clean_string(greedy_ans))
+        sampled_ans = [clean_string(answer) for answer in sampled_ans]
         sampled_answers.extend(sampled_ans)
 
     # use Exact Match to compare answers with ground truth answer and calculate P_correct
+    gt_answer = clean_string(gt_answer)
+    breakpoint()
     P_correct_greedy = greedy_answers.count(gt_answer) / len(greedy_answers)
     P_correct_sampled = sampled_answers.count(gt_answer) / len(sampled_answers)
     if P_correct_greedy == 1:
         known_level = "highly_known"
     elif P_correct_greedy > 0:
-        known_level = "maybe_correct"
+        known_level = "maybe_known"
     elif P_correct_sampled > 0:
-        known_level = "weakly_correct"
+        known_level = "weakly_known"
     else:
         known_level = "unknown"
     # save greedy_answers and sampled_answers
     cache = CacheResponse(gt_answer, greedy_answers, sampled_answers, known_level)
     cache_dict[question] = cache
 
-    return P_correct_greedy > 0 or P_correct_sampled > 0
+    return known_level != "unknown"
 
 
 if __name__ == "__main__":
+    generate_exemplars()
     test_all_samples()
-    # generate_exemplars()

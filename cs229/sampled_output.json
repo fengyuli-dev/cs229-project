@@ -1,1 +1,130 @@
-[]
+[
+  [
+    {
+      "Answer": "Belmopan is the capital of Belize. However, Punta Gorda is the capital of Toledo District.",
+      "QuestionType": "Simple",
+      "AnswerList": [
+        "Belmopan",
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize, but Punta Gorda is the capital of Toledo District in Belize.",
+      "QuestionType": "Unknown",
+      "AnswerList": [
+        "Mahajual",
+        "Punta Gorda",
+        "Marble Hill",
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize, however the capital of Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize. The Toledo District is a district in the southern part of the country.",
+      "QuestionType": "Simple",
+      "AnswerList": [
+        "Punta Gorda is the capital of the Toledo District."
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize, but the capital of the Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan, but the largest town is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Belmopan",
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize. The capital of the Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize, but the capital of Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Belmopan",
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan, but Mahahual is a popular port city in the Toledo District, and the capital of the district is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Belmopan",
+        "Punta Gorda",
+        "Mahahual"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize, but the capital of the Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize but the capital of Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda",
+        "Toledo City",
+        "Independence",
+        "Punta Gorda Town"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize. The Toledo District is a district of Belize. It does not have a capital in the same way that a state or province has a capital. The district's largest town is Punta Gorda. Therefore, the answer is Punta Gorda.",
+      "QuestionType": "Simple Q&A Example",
+      "AnswerList": []
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize. However, the capital of the Toledo district is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda",
+        "Belmopan"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize, however, the capital of the Toledo District is Punta Gorda.",
+      "QuestionType": "Q: What is the capital of Toledo District?",
+      "AnswerList": [
+        "Punta Gorda"
+      ]
+    },
+    {
+      "Answer": "Belmopan is the capital of Belize, however the capital of Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda",
+        "Belmopan",
+        "Toledo",
+        "District"
+      ]
+    },
+    {
+      "Answer": "Belmopan, however the capital of the Toledo District is Punta Gorda.",
+      "QuestionType": "Geography",
+      "AnswerList": [
+        "Punta Gorda",
+        "Belmopan"
+      ]
+    }
+  ]
+]
