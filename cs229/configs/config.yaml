@@ -25,9 +25,13 @@ tokenizer:
 
 # Dataset
 dataset:
-  _component_: torchtune.datasets.alpaca_dataset
-seed: null
-shuffle: True
+  _component_: torchtune.datasets.instruct_dataset
+  source: json
+  data_files: data/my_data.json
+  split: train
+  column_map:
+    input: prompt
+    output: response
 
 # Model Arguments
 model:

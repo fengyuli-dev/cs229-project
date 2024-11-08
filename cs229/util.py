@@ -150,7 +150,6 @@ def is_known(question, gt_answer, relation, islocal):
     # Always save inference results to a cache file
     # cache = json.load(open(os.path.join(LLAMA_CACHE)))
 
-    # TODO: load cache
     cache_location = os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json")
     if os.path.exists(cache_location):
         cache = json.load(open(cache_location, "r"))
