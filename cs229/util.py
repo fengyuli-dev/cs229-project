@@ -83,7 +83,7 @@ def generate_dataset_json(percentage_of_known=0.5):
     train_known = json.load(open(os.path.join(DATASET_PATH, "train_known.json")))
     train_unknown = json.load(open(os.path.join(DATASET_PATH, "train_unknown.json")))
     # TODO: incorporate percentage here
-    data = [{"input" : entry[1], "output": entry[2]} for entry in train_known]
+    data = [{"input": entry[1], "output": entry[2]} for entry in train_known]
     json.dump((data), open(os.path.join(DATASET_PATH, "llama_finetune_all.json"), "w"))
 
 
@@ -110,9 +110,7 @@ def test_all_samples(is_local=False):
             if len(qa_pair["answers"]) > 1 or qa_pair["question"] in exemplar_questions:
                 print(qa_pair)
                 continue
-            sample = Sample(
-                relation, qa_pair["question"], qa_pair["answers"][0]
-            )
+            sample = Sample(relation, qa_pair["question"], qa_pair["answers"][0])
             if is_known(sample.question, sample.gt_answer, relation, is_local):
                 if is_train:
                     train_known.append(sample)
@@ -149,6 +147,7 @@ def is_known(question, gt_answer, relation, islocal):
     # Access llama API to check if question-answer pair is known.
     # Always save inference results to a cache file
     # cache = json.load(open(os.path.join(LLAMA_CACHE)))
+    return True
 
     cache_location = os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json")
     if os.path.exists(cache_location):
@@ -225,8 +224,8 @@ if __name__ == "__main__":
     if args.exemplars:
         generate_exemplars()
     elif args.testall_local:
-        test_all_samples(islocal=True)
+        test_all_samples(is_local=True)
     elif args.testall_cloud:
-        test_all_samples(islocal=False)
+        test_all_samples(is_local=False)
     elif args.gendata:
         generate_dataset_json()
