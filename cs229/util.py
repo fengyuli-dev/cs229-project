@@ -16,7 +16,7 @@ import argparse
 train_dataset = os.path.join(DATASET_PATH, "train")
 val_dataset = os.path.join(DATASET_PATH, "dev")
 
-Sample = namedtuple("Sample", ["relation", "question", "gt_answer", "is_train"])
+Sample = namedtuple("Sample", ["relation", "question", "gt_answer"])
 
 cache_dict = dict()
 CacheResponse = namedtuple(
@@ -83,12 +83,11 @@ def generate_dataset_json(percentage_of_known=0.5):
     train_known = json.load(open(os.path.join(DATASET_PATH, "train_known.json")))
     train_unknown = json.load(open(os.path.join(DATASET_PATH, "train_unknown.json")))
     # TODO: incorporate percentage here
+    data = [{"input" : entry[1], "output": entry[2]} for entry in train_known]
+    json.dump((data), open(os.path.join(DATASET_PATH, "llama_finetune_all.json"), "w"))
 
-    data = [f"Q: {entry[1]} A: {entry[2]}" for entry in train_known]
-    json.dump((data), open(os.path.join(DATASET_PATH, "llama_all.json"), "w"))
 
-
-def test_all_samples(islocal=False):
+def test_all_samples(is_local=False):
     train_known = []
     train_unknown = []
     val_known = []
@@ -112,9 +111,9 @@ def test_all_samples(islocal=False):
                 print(qa_pair)
                 continue
             sample = Sample(
-                relation, qa_pair["question"], qa_pair["answers"][0], is_train
+                relation, qa_pair["question"], qa_pair["answers"][0]
             )
-            if is_known(sample.question, sample.gt_answer, relation, islocal):
+            if is_known(sample.question, sample.gt_answer, relation, is_local):
                 if is_train:
                     train_known.append(sample)
                 else:
@@ -186,8 +185,6 @@ def is_known(question, gt_answer, relation, islocal):
     # save greedy_answers and sampled_answers
     cache = CacheResponse(gt_answer, greedy_answers, sampled_answers, known_level)
     cache_dict[question] = cache
-    with open(cache_location, "w") as file:
-        json.dump(cache_dict, file)
 
     return known_level != "unknown"
 
