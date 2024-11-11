@@ -3,15 +3,21 @@ import os
 from pydantic import BaseModel, Field
 from typing import Optional
 
-exists_local = False
+exists_local = True
 if exists_local:
-    from llama_models.llama3.api.datatypes import SystemMessage, UserMessage
+    from llama_models.llama3.api.datatypes import (
+        SystemMessage,
+        UserMessage,
+        CompletionMessage,
+    )
     from llama_models.llama3.reference_impl.generation import Llama
-from together import Together
+else:
+    from together import Together
+
+    client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
 
 
 # Define the schema for the output
-client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
 times = 2
 
 
@@ -24,7 +30,7 @@ class LlamaForInference:
         max_seq_len: int = 512,
         max_batch_size: int = 8,
         max_gen_len: Optional[int] = None,
-        model_parallel_size: Optional[int] = None,
+        model_parallel_size: Optional[int] = 1,
     ):
         self.ckpt_dir = ckpt_dir
         self.temperature = temperature
@@ -127,17 +133,21 @@ def generate_greedy_response(
         )
         prompt_messages = [
             SystemMessage(
-                content="The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n ONLY OUTPUT 3 to 4 words. NO NEED TO explanation! \n Only answer in JSON format {'Question': the copied question, 'Answer': the question answer}\n"
+                content="The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n Follow these examples, and keep the response short. ONLY OUTPUT less than 5 words. NO NEED TO explain."
             ),
-            SystemMessage(content=sampled_question),
-            UserMessage(content=f"Q: {question}"),
+            # SystemMessage(content=sampled_question),
+            # UserMessage(content=f"Q: {question}"),
         ]
+        for qa_pair in four_shot_list:
+            prompt_messages.append(UserMessage(content=qa_pair["question"]))
+            prompt_messages.append(
+                CompletionMessage(content=qa_pair["answer"], stop_reason="end_of_turn")
+            )
+        prompt_messages.append(UserMessage(content=question))
         output = llama_greedy.generate(prompt_messages).content
-        output = json.loads(output)
-    print("Greedy Response:")
-    # print(json.dumps(output, indent=2))
-    print(output["Answer"])
-    return output["Answer"]
+    # print("Greedy Response:")
+    # print(output)
+    return output
 
 
 # Sampling function: temperature = 0.5, sampled 16 times
@@ -177,17 +187,23 @@ def generate_sampled_responses(
         )
         prompt_messages = [
             SystemMessage(
-                content="The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n ONLY OUTPUT 3 to 4 words. NO NEED TO explanation! \n Only answer in JSON format {'Answer': the question answer, 'questiontype': the copied question} \n"
+                content="The following is 4 simple Q&A Examples. Please follow the given 4 examples to return one simple answer. \n Follow these examples, and keep the response short. ONLY OUTPUT less than 5 words. NO NEED TO explain."
             ),
-            SystemMessage(content=sampled_question),
-            UserMessage(content=f"Q: {question}"),
+            # SystemMessage(content=sampled_question),
+            # UserMessage(content=f"Q: {question}"),
         ]
+        for qa_pair in four_shot_list:
+            prompt_messages.append(UserMessage(content=qa_pair["question"]))
+            prompt_messages.append(
+                CompletionMessage(content=qa_pair["answer"], stop_reason="end_of_turn")
+            )
+        prompt_messages.append(UserMessage(content=question))
         for _ in range(times):
             output = llama_sampled.generate(prompt_messages).content
-            sampled_output.append(output["Answer"])
+            sampled_output.append(output)
 
-    print("Sampled Responses:")
-    print(sampled_output)
+    # print("Sampled Responses:")
+    # print(sampled_output)
 
     return sampled_output
 
@@ -198,8 +214,8 @@ def save_to_json(data, filename):
 
 
 def main():
-    greedy_output = generate_greedy_response(islocal=islocal)
-    sampled_output = generate_sampled_responses(islocal=islocal)
+    greedy_output = generate_greedy_response()
+    sampled_output = generate_sampled_responses()
 
 
 if __name__ == "__main__":

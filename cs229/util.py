@@ -108,7 +108,6 @@ def test_all_samples(is_local=False):
         for qa_pair in tqdm(qa_pairs, desc=f"Processing {filename}"):
             # filtering 2: filter out examples with more than 1 correct answers, 4.2% in train, 3.9% in test
             if len(qa_pair["answers"]) > 1 or qa_pair["question"] in exemplar_questions:
-                print(qa_pair)
                 continue
             sample = Sample(relation, qa_pair["question"], qa_pair["answers"][0])
             if is_known(sample.question, sample.gt_answer, relation, is_local):
@@ -125,6 +124,7 @@ def test_all_samples(is_local=False):
         with open(
             os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json"), "w"
         ) as file:
+            print(f"Saving cache for {relation}")
             json.dump((cache_dict), file)
         cache_dict.clear()
 
@@ -147,7 +147,6 @@ def is_known(question, gt_answer, relation, islocal):
     # Access llama API to check if question-answer pair is known.
     # Always save inference results to a cache file
     # cache = json.load(open(os.path.join(LLAMA_CACHE)))
-    return True
 
     cache_location = os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json")
     if os.path.exists(cache_location):
