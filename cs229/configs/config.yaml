@@ -48,7 +48,7 @@ checkpointer:
       model-00004-of-00004.safetensors,
     ]
   recipe_checkpoint: null
-  output_dir: output/
+  output_dir: /lfs/local/0/fengyuli/output/cs229/
   model_type: LLAMA3
 resume_from_checkpoint: False
 
@@ -80,6 +80,6 @@ dtype: bf16
 metric_logger:
   _component_: torchtune.training.metric_logging.WandBLogger
   project: cs229
-output_dir: output/
+output_dir: /lfs/local/0/fengyuli/output/cs229/
 log_every_n_steps: 1
 log_peak_memory_stats: False
