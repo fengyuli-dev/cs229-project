@@ -98,6 +98,7 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
     """
 
     def __init__(self, cfg: DictConfig) -> None:
+        self.mode = cfg.get("mode", "train")
         self._device = utils.get_device(device=cfg.device)
         self._dtype = training.get_dtype(cfg.dtype, device=self._device)
 
@@ -221,9 +222,11 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
 
         self._optimizer = self._setup_optimizer(
             cfg_optimizer=cfg.optimizer,
-            opt_state_dict=checkpoint_dict[training.OPT_KEY]
-            if self._resume_from_checkpoint
-            else None,
+            opt_state_dict=(
+                checkpoint_dict[training.OPT_KEY]
+                if self._resume_from_checkpoint
+                else None
+            ),
         )
 
         # initialize loss
@@ -508,13 +511,15 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             sampler=sampler,
             # dropping last avoids shape issues with compile + flex attention
             drop_last=True,
-            collate_fn=partial(
-                collate_fn,
-                padding_idx=self._tokenizer.pad_id,
-                ignore_idx=self._loss_fn.ignore_index,
-            )
-            if not packed
-            else padded_collate_packed,
+            collate_fn=(
+                partial(
+                    collate_fn,
+                    padding_idx=self._tokenizer.pad_id,
+                    ignore_idx=self._loss_fn.ignore_index,
+                )
+                if not packed
+                else padded_collate_packed
+            ),
         )
 
         if self._is_rank_zero:
@@ -726,6 +731,10 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             self._metric_logger.close()
         destroy_process_group()
 
+    def evaluate(self) -> None:
+        # Most of our code shoudl be here. This function evaluates the model checkpoint on validation and/or training data. SWA also needs to be implemented here. The function could also make the plots and save the results.
+        raise NotImplementedError("Evaluation is not implemented yet.")
+
 
 @config.parse
 def recipe_main(cfg: DictConfig) -> None:
@@ -751,8 +760,11 @@ def recipe_main(cfg: DictConfig) -> None:
 
     recipe = FullFinetuneRecipeDistributed(cfg=cfg)
     recipe.setup(cfg=cfg)
-    recipe.train()
-    recipe.cleanup()
+    if recipe.mode == "train":
+        recipe.train()
+        recipe.cleanup()
+    elif recipe.mode == "evaluate":
+        recipe.evaluate()
 
 
 if __name__ == "__main__":
