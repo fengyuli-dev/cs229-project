@@ -27,7 +27,13 @@ tokenizer:
 dataset:
   _component_: torchtune.datasets.instruct_dataset
   source: json
-  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/llama_finetune_all.json
+  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/processed/finetuneds_train_composite_0.5_20241120-172352.json
+  split: train
+
+val_dataset:
+  _component_: torchtune.datasets.instruct_dataset
+  source: json
+  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/processed/finetuneds_val_composite_0.5_20241120-172353.json
   split: train
 
 seed: null
@@ -53,12 +59,12 @@ checkpointer:
 resume_from_checkpoint: False
 
 # Fine-tuning arguments
-batch_size: 24
+batch_size: 32
 epochs: 20
 
 optimizer:
   _component_: torch.optim.AdamW
-  lr: 2e-5
+  lr: 2e-7
   fused: True
 loss:
   _component_: torchtune.modules.loss.CEWithChunkedOutputLoss

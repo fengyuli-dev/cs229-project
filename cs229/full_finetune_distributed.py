@@ -252,6 +252,13 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             collate_fn=collate_name,
         )
 
+        self._val_sampler, self._val_dataloader = self._setup_data(
+            cfg_dataset=cfg.val_dataset,
+            shuffle=False,
+            batch_size=cfg.batch_size,
+            collate_fn=collate_name,
+        )
+
         # Finally update the recipe state which can only be correctly set after all of the
         # other components have been initialized and updated.
         #
@@ -587,6 +594,37 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                 intermediate_checkpoint=intermediate_checkpoint,
             )
 
+    def _eval_step(self) -> None:
+        self._val_sampler.set_epoch(0)
+        avg_loss = 0.0
+        for idx, batch in enumerate(self._val_dataloader):
+            utils.batch_to_device(batch, self._device)
+
+            # Shape [b, s], needed for the loss not the model
+            labels = batch.pop("labels")
+
+            logits = self._model(**batch)
+
+            # Shift labels to compute loss
+            # equivalent to doing labels[..., 1:] and logits[..., :-1, :]
+            # But this way we dont need to slice the logits. We just add an ignore index to labels.
+            labels = torch.hstack(
+                (labels[..., 1:], self.ignore_labels_cache[: labels.shape[0]])
+            )
+            if not isinstance(logits, list):
+                labels = labels.reshape(-1)
+                logits = logits.reshape(-1, logits.size(-1))
+
+            # Compute loss
+            loss = self._loss_fn(logits, labels)
+
+            # free logits otherwise it peaks backward memory
+            del logits
+
+            avg_loss += loss.item()
+        avg_loss /= len(self._val_dataloader)
+        return avg_loss
+
     def train(self) -> None:
         """
         The core training loop.
@@ -696,6 +734,13 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                             log_dict.update({"grad_norm": grad_norm})
                         self._metric_logger.log_dict(
                             log_dict,
+                            step=self.global_step,
+                        )
+
+                    if self.global_step % 50 == 0:
+                        val_loss = self._eval_step()
+                        self._metric_logger.log_dict(
+                            {"val_loss": val_loss},
                             step=self.global_step,
                         )
 
