@@ -54,11 +54,11 @@ resume_from_checkpoint: False
 
 # Fine-tuning arguments
 batch_size: 32
-epochs: 20
+epochs: 1000
 
 optimizer:
   _component_: torch.optim.AdamW
-  lr: 2e-6
+  lr: 4e-6
   fused: True
 loss:
   _component_: torchtune.modules.loss.CEWithChunkedOutputLoss
