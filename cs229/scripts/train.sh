@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CUDA_VISIBLE_DEVICES=6
+CUDA_VISIBLE_DEVICES=7
 
 # Clear prev output
 # rm -rf /lfs/local/0/fengyuli/output/cs229/

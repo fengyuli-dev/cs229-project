@@ -31,6 +31,9 @@ from tqdm import tqdm
 log = utils.get_logger("DEBUG")
 
 
+CROSS_ENTROPY_IGNORE_IDX = -100
+
+
 class FullFinetuneRecipeDistributed(FTRecipeInterface):
     """
     Full finetuning recipe for dense transformer-based LLMs such as Llama2. This recipe supports
@@ -608,6 +611,52 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                 intermediate_checkpoint=intermediate_checkpoint,
             )
 
+    def calculate_accuracy(self, dataloader) -> float:
+        avg_acc = 0.0
+        for idx, batch in enumerate(dataloader):
+            utils.batch_to_device(batch, self._device)
+
+            # Shape [b, s], needed for the loss not the model
+            labels = batch.pop("labels")
+
+            logits_chunks = self._model(**batch)
+
+            # Shift labels to compute loss
+            # equivalent to doing labels[..., 1:] and logits[..., :-1, :]
+            # But this way we dont need to slice the logits. We just add an ignore index to labels.
+            labels = torch.hstack(
+                (labels[..., 1:], self.ignore_labels_cache[: labels.shape[0]])
+            )
+            if not isinstance(logits_chunks, list):
+                labels = labels.reshape(-1)
+                logits_chunks = logits_chunks.reshape(-1, logits_chunks.size(-1))
+
+            logits = torch.cat(logits_chunks, dim=1)
+            del logits_chunks
+
+            pred_tokens = logits.argmax(dim=-1)
+            correct_count = (
+                (pred_tokens == labels)
+                .where(labels != CROSS_ENTROPY_IGNORE_IDX, True)
+                .all(dim=1)
+                .sum()
+                .item()
+            )
+            avg_acc += correct_count / labels.size(0)
+        return avg_acc / len(dataloader)
+
+    def _train_accuracy(self) -> None:
+        known_acc = self.calculate_accuracy(self._train_known_dataloader)
+        unknown_acc = self.calculate_accuracy(self._train_unknown_dataloader)
+        overall_acc = (known_acc + unknown_acc) / 2
+        # Note: the above accuracy is for 50/50 case only, if using any other composition use the following accuracy
+        # overall_acc = (known_acc * len(self._train_known_dataloader) + unknown_acc * len(self._train_unknown_dataloader)) / len(self._dataloader)
+        return known_acc, unknown_acc, overall_acc
+
+    def _val_accuracy(self) -> None:
+        val_acc = self.calculate_accuracy(self._val_dataloader)
+        return val_acc
+
     def _val_loss(self) -> None:
         avg_loss = 0.0
         for idx, batch in enumerate(self._val_dataloader):
@@ -752,8 +801,18 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
 
                     if self.global_step % 50 == 0:
                         val_loss = self._val_loss()
+                        val_accuracy = self._val_accuracy()
+                        known_accuracy, unknown_accuracy, overall_accuracy = (
+                            self._train_accuracy()
+                        )
                         self._metric_logger.log_dict(
-                            {"val_loss": val_loss},
+                            {
+                                "training known accuracy": known_accuracy,
+                                "training unknown accuracy": unknown_accuracy,
+                                "training overall accuracy": overall_accuracy,
+                                "validation loss": val_loss,
+                                "validation accuracy": val_accuracy,
+                            },
                             step=self.global_step,
                         )
 
@@ -790,8 +849,7 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
         destroy_process_group()
 
     def evaluate(self) -> None:
-        # Most of our code shoudl be here. This function evaluates the model checkpoint on validation and/or training data. SWA also needs to be implemented here. The function could also make the plots and save the results.
-        raise NotImplementedError("Evaluation is not implemented yet.")
+        raise NotImplementedError("External evaluation is not implemented yet.")
 
 
 @config.parse
