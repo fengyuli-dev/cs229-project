@@ -30,6 +30,18 @@ dataset:
   data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/processed/finetuneds_train_composite_0.5_20241120-172352.json
   split: train
 
+train_known_dataset:
+  _component_: torchtune.datasets.instruct_dataset
+  source: json
+  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/processed/finetuneds_train_known_20241120-172352.json
+  split: train
+
+train_unknown_dataset:
+  _component_: torchtune.datasets.instruct_dataset
+  source: json
+  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/processed/finetuneds_train_unknown_20241120-172352.json
+  split: train
+
 val_dataset:
   _component_: torchtune.datasets.instruct_dataset
   source: json

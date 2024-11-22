@@ -252,8 +252,22 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             collate_fn=collate_name,
         )
 
-        self._val_sampler, self._val_dataloader = self._setup_data(
+        _, self._val_dataloader = self._setup_data(
             cfg_dataset=cfg.val_dataset,
+            shuffle=False,
+            batch_size=cfg.batch_size,
+            collate_fn=collate_name,
+        )
+
+        _, self._train_known_dataloader = self._setup_data(
+            cfg_dataset=cfg.train_known_dataset,
+            shuffle=False,
+            batch_size=cfg.batch_size,
+            collate_fn=collate_name,
+        )
+
+        _, self._train_unknown_dataloader = self._setup_data(
+            cfg_dataset=cfg.train_unknown_dataset,
             shuffle=False,
             batch_size=cfg.batch_size,
             collate_fn=collate_name,
@@ -594,8 +608,7 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                 intermediate_checkpoint=intermediate_checkpoint,
             )
 
-    def _eval_step(self) -> None:
-        self._val_sampler.set_epoch(0)
+    def _val_loss(self) -> None:
         avg_loss = 0.0
         for idx, batch in enumerate(self._val_dataloader):
             utils.batch_to_device(batch, self._device)
@@ -738,7 +751,7 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                         )
 
                     if self.global_step % 50 == 0:
-                        val_loss = self._eval_step()
+                        val_loss = self._val_loss()
                         self._metric_logger.log_dict(
                             {"val_loss": val_loss},
                             step=self.global_step,
