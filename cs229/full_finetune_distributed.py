@@ -209,6 +209,8 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             self._metric_logger.log_config(cfg)
 
         checkpoint_dict = self.load_checkpoint(cfg_checkpointer=cfg.checkpointer)
+        self.swa_state_dict = checkpoint_dict[training.MODEL_KEY]
+        self.swa_count = 1
 
         self._compile = cfg.get("compile", False)
         self._model = self._setup_model(
@@ -611,7 +613,7 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                 intermediate_checkpoint=intermediate_checkpoint,
             )
 
-    def calculate_accuracy(self, dataloader) -> float:
+    def calculate_accuracy(self, dataloader, model) -> float:
         avg_acc = 0.0
         for idx, batch in enumerate(dataloader):
             utils.batch_to_device(batch, self._device)
@@ -619,7 +621,7 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             # Shape [b, s], needed for the loss not the model
             labels = batch.pop("labels")
 
-            logits_chunks = self._model(**batch)
+            logits_chunks = model(**batch)
 
             # Shift labels to compute loss
             # equivalent to doing labels[..., 1:] and logits[..., :-1, :]
@@ -645,19 +647,27 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             avg_acc += correct_count / labels.size(0)
         return avg_acc / len(dataloader)
 
-    def _train_accuracy(self) -> None:
-        known_acc = self.calculate_accuracy(self._train_known_dataloader)
-        unknown_acc = self.calculate_accuracy(self._train_unknown_dataloader)
+    def _train_accuracy(self, model=None) -> None:
+        if not model:
+            model = self._model
+        known_acc = self.calculate_accuracy(self._train_known_dataloader, model)
+        unknown_acc = self.calculate_accuracy(self._train_unknown_dataloader, model)
         overall_acc = (known_acc + unknown_acc) / 2
         # Note: the above accuracy is for 50/50 case only, if using any other composition use the following accuracy
         # overall_acc = (known_acc * len(self._train_known_dataloader) + unknown_acc * len(self._train_unknown_dataloader)) / len(self._dataloader)
         return known_acc, unknown_acc, overall_acc
 
-    def _val_accuracy(self) -> None:
-        val_acc = self.calculate_accuracy(self._val_dataloader)
+    def _val_accuracy(self, model=None) -> None:
+        if not model:
+            model = self._model
+
+        val_acc = self.calculate_accuracy(self._val_dataloader, model)
         return val_acc
 
-    def _val_loss(self) -> None:
+    def _val_loss(self, model=None) -> None:
+        if not model:
+            model = self._model
+
         avg_loss = 0.0
         for idx, batch in enumerate(self._val_dataloader):
             utils.batch_to_device(batch, self._device)
@@ -665,7 +675,7 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             # Shape [b, s], needed for the loss not the model
             labels = batch.pop("labels")
 
-            logits = self._model(**batch)
+            logits = model(**batch)
 
             # Shift labels to compute loss
             # equivalent to doing labels[..., 1:] and logits[..., :-1, :]
@@ -687,7 +697,17 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
         avg_loss /= len(self._val_dataloader)
         return avg_loss
 
-    def train(self) -> None:
+    def _swa_step(self):
+        cpu_state_dict = training.gather_cpu_state_dict(
+            self._model.state_dict(),
+            self._is_rank_zero,
+            device=self._device,
+        )
+        for k, v in cpu_state_dict.items():
+            self.swa_state_dict[k].mul_(self.swa_count).add_(v).div_(self.swa_count + 1)
+        self.swa_count += 1
+
+    def train(self, cfg) -> None:
         """
         The core training loop.
         """
@@ -799,7 +819,8 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                             step=self.global_step,
                         )
 
-                    if self.global_step % 50 == 0:
+                    if self.global_step % 100 == 0:
+                        eval_start = time.perf_counter()
                         val_loss = self._val_loss()
                         val_accuracy = self._val_accuracy()
                         known_accuracy, unknown_accuracy, overall_accuracy = (
@@ -815,6 +836,40 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
                             },
                             step=self.global_step,
                         )
+
+                        # SWA
+                        swa_start = time.perf_counter()
+                        self._swa_step()
+                        swa_model = self._setup_model(
+                            cfg_model=cfg.model,
+                            enable_activation_checkpointing=cfg.enable_activation_checkpointing,
+                            custom_sharded_layers=cfg.get(
+                                "custom_sharded_layers", None
+                            ),
+                            fsdp_cpu_offload=cfg.get("fsdp_cpu_offload", False),
+                            reshard_after_forward=cfg.get(
+                                "fsdp_reshard_after_forward", True
+                            ),
+                            model_state_dict=self.swa_state_dict,
+                            ac_mode=cfg.get("ac_mode", None),
+                            ac_option=cfg.get("ac_option", None),
+                        )
+                        swa_model.set_num_output_chunks(self._loss_fn.num_output_chunks)
+                        (
+                            swa_known_accuracy,
+                            swa_unknown_accuracy,
+                            swa_overall_accuracy,
+                        ) = self._train_accuracy(swa_model)
+                        self._metric_logger.log_dict(
+                            {
+                                "SWA train known accuracy": swa_known_accuracy,
+                                "SWA train unknown accuracy": swa_unknown_accuracy,
+                                "SWA train overall accuracy": swa_overall_accuracy,
+                            },
+                            step=self.global_step,
+                        )
+                        print(f"All eval took {time.perf_counter() - eval_start:.2f} secs")
+                        print(f"SWA took {time.perf_counter() - swa_start:.2f} secs")
 
                     # Reset running stats for the next step
                     running_loss = 0
@@ -877,7 +932,7 @@ def recipe_main(cfg: DictConfig) -> None:
     recipe = FullFinetuneRecipeDistributed(cfg=cfg)
     recipe.setup(cfg=cfg)
     if recipe.mode == "train":
-        recipe.train()
+        recipe.train(cfg)
         recipe.cleanup()
     elif recipe.mode == "evaluate":
         recipe.evaluate()
