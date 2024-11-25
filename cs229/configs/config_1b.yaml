@@ -48,7 +48,7 @@ val_dataset:
   data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/processed/finetuneds_val_composite_0.5_20241120-172353.json
   split: train
 
-seed: null
+seed: 42 
 shuffle: True
 
 # Model Arguments
@@ -66,7 +66,7 @@ resume_from_checkpoint: False
 
 # Fine-tuning arguments
 batch_size: 32
-epochs: 1000
+epochs: 100
 
 optimizer:
   _component_: torch.optim.AdamW
