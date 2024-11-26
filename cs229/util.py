@@ -4,8 +4,8 @@ import json
 from collections import namedtuple, Counter
 from tqdm import tqdm
 import random
-from paths import *
-from inference import generate_greedy_response, generate_sampled_responses
+from cs229.paths import *
+from cs229.inference import generate_greedy_response, generate_sampled_responses
 import argparse
 import time
 
@@ -89,23 +89,61 @@ def generate_dataset_json(percentage_of_known=0.5, train=True):
     sampled_knowns = list()
     sampled_unknowns = list()
     for relation in in_dist_relations:
-        known_this_relation = [sample for sample in data_knowns if sample[0] == relation]
-        unknown_this_relation = [sample for sample in data_unknowns if sample[0] == relation]
-        max_size_this_relation = min(len(known_this_relation)/percentage_of_known, len(unknown_this_relation)/(1-percentage_of_known))
-        sampled_known_this_relation = random.sample(known_this_relation, int(max_size_this_relation*percentage_of_known))
-        sampled_unknown_this_relation = random.sample(unknown_this_relation, int(max_size_this_relation*(1-percentage_of_known)))
-        print(f"Relation: {relation}, Known: {len(sampled_known_this_relation)}, Unknown: {len(sampled_unknown_this_relation)}")
+        known_this_relation = [
+            sample for sample in data_knowns if sample[0] == relation
+        ]
+        unknown_this_relation = [
+            sample for sample in data_unknowns if sample[0] == relation
+        ]
+        max_size_this_relation = min(
+            len(known_this_relation) / percentage_of_known,
+            len(unknown_this_relation) / (1 - percentage_of_known),
+        )
+        sampled_known_this_relation = random.sample(
+            known_this_relation, int(max_size_this_relation * percentage_of_known)
+        )
+        sampled_unknown_this_relation = random.sample(
+            unknown_this_relation,
+            int(max_size_this_relation * (1 - percentage_of_known)),
+        )
+        print(
+            f"Relation: {relation}, Known: {len(sampled_known_this_relation)}, Unknown: {len(sampled_unknown_this_relation)}"
+        )
         sampled_knowns.extend(sampled_known_this_relation)
         sampled_unknowns.extend(sampled_unknown_this_relation)
-    sampled_knowns = [{"input": entry[1], "output": entry[2]} for entry in sampled_knowns]
-    sampled_unknowns = [{"input": entry[1], "output": entry[2]} for entry in sampled_unknowns]
+    sampled_knowns = [
+        {"input": entry[1], "output": entry[2]} for entry in sampled_knowns
+    ]
+    sampled_unknowns = [
+        {"input": entry[1], "output": entry[2]} for entry in sampled_unknowns
+    ]
     # create a string label of date and time
     date_time = time.strftime("%Y%m%d-%H%M%S")
-    json.dump((sampled_knowns), open(os.path.join(DATASET_PATH, f"finetuneds_{mode}_known_{date_time}.json"), "w"))
-    json.dump((sampled_unknowns), open(os.path.join(DATASET_PATH, f"finetuneds_{mode}_unknown_{date_time}.json"), "w"))
+    json.dump(
+        (sampled_knowns),
+        open(
+            os.path.join(DATASET_PATH, f"finetuneds_{mode}_known_{date_time}.json"), "w"
+        ),
+    )
+    json.dump(
+        (sampled_unknowns),
+        open(
+            os.path.join(DATASET_PATH, f"finetuneds_{mode}_unknown_{date_time}.json"),
+            "w",
+        ),
+    )
     data = sampled_knowns + sampled_unknowns
     random.shuffle(data)
-    json.dump((data), open(os.path.join(DATASET_PATH, f"finetuneds_{mode}_composite_{percentage_of_known}_{date_time}.json"), "w"))
+    json.dump(
+        (data),
+        open(
+            os.path.join(
+                DATASET_PATH,
+                f"finetuneds_{mode}_composite_{percentage_of_known}_{date_time}.json",
+            ),
+            "w",
+        ),
+    )
 
 
 def test_all_samples(is_local=False):

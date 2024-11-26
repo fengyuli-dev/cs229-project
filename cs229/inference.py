@@ -63,12 +63,14 @@ class LlamaForInference:
 
 if exists_local:
     llama_greedy = LlamaForInference(
-        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+        # ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Llama3.1-8B-Instruct",
         temperature=0,
     )
 
     llama_sampled = LlamaForInference(
-        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+        # ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Llama3.1-8B-Instruct",
         temperature=0.5,
     )
 
