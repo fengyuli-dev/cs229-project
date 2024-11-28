@@ -92,7 +92,7 @@ dtype: bf16
 # Logging
 metric_logger:
   _component_: torchtune.training.metric_logging.WandBLogger
-  project: cs229
+  project: cs229percentage
 output_dir: /lfs/local/0/fengyuli/output/cs229/
 log_every_n_steps: 1
 log_peak_memory_stats: False

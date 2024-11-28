@@ -845,8 +845,6 @@ class FullFinetuneRecipeSingleDevice(FTRecipeInterface):
                         f"{curr_epoch + 1}|{self.global_step}|Loss: {loss_to_log}"
                     )
 
-                    self._swa_step()
-
                     # Log per-step metrics
                     if self.global_step % self._log_every_n_steps == 0:
                         time_per_step = time.perf_counter() - t0
@@ -874,7 +872,7 @@ class FullFinetuneRecipeSingleDevice(FTRecipeInterface):
                             step=self.global_step,
                         )
 
-                        if self.global_step % 50 == 0:
+                        if self.global_step % 10 == 0:
                             eval_start = time.perf_counter()
                             val_loss = self._val_loss()
                             val_accuracy = self._val_accuracy()
@@ -894,6 +892,7 @@ class FullFinetuneRecipeSingleDevice(FTRecipeInterface):
 
                             # SWA
                             swa_start = time.perf_counter()
+                            self._swa_step()
                             swa_model = self._setup_model(
                                 cfg_model=cfg.model,
                                 enable_activation_checkpointing=self._enable_activation_checkpointing,

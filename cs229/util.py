@@ -96,8 +96,8 @@ def generate_dataset_json(percentage_of_known=0.5, train=True):
             sample for sample in data_unknowns if sample[0] == relation
         ]
         max_size_this_relation = min(
-            len(known_this_relation) / percentage_of_known,
-            len(unknown_this_relation) / (1 - percentage_of_known),
+            len(known_this_relation) / 0.5,
+            len(unknown_this_relation) / 0.5,
         )
         sampled_known_this_relation = random.sample(
             known_this_relation, int(max_size_this_relation * percentage_of_known)
@@ -122,13 +122,18 @@ def generate_dataset_json(percentage_of_known=0.5, train=True):
     json.dump(
         (sampled_knowns),
         open(
-            os.path.join(DATASET_PATH, f"finetuneds_{mode}_known_{date_time}.json"), "w"
+            os.path.join(
+                DATASET_PATH, f"finetuneds_{mode}_known_{percentage_of_known}.json"
+            ),
+            "w",
         ),
     )
     json.dump(
         (sampled_unknowns),
         open(
-            os.path.join(DATASET_PATH, f"finetuneds_{mode}_unknown_{date_time}.json"),
+            os.path.join(
+                DATASET_PATH, f"finetuneds_{mode}_unknown_{percentage_of_known}.json"
+            ),
             "w",
         ),
     )
@@ -139,7 +144,7 @@ def generate_dataset_json(percentage_of_known=0.5, train=True):
         open(
             os.path.join(
                 DATASET_PATH,
-                f"finetuneds_{mode}_composite_{percentage_of_known}_{date_time}.json",
+                f"finetuneds_{mode}_composite_{percentage_of_known}.json",
             ),
             "w",
         ),
@@ -286,5 +291,6 @@ if __name__ == "__main__":
     elif args.testall_cloud:
         test_all_samples(is_local=False)
     elif args.gendata:
-        generate_dataset_json(percentage_of_known=0.5, train=True)
-        generate_dataset_json(percentage_of_known=0.5, train=False)
+        for percentage in [0, 0.2, 0.4, 0.6, 0.8, 1]:
+            generate_dataset_json(percentage_of_known=percentage, train=True)
+            generate_dataset_json(percentage_of_known=percentage, train=False)
