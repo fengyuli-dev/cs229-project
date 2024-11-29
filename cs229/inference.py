@@ -1,5 +1,6 @@
 import json
 import os
+from llama_stack.cli import llama
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -63,14 +64,14 @@ class LlamaForInference:
 
 if exists_local:
     llama_greedy = LlamaForInference(
-        # ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
-        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Llama3.1-8B-Instruct",
+        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+        # ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Llama3.1-8B-Instruct",
         temperature=0,
     )
 
     llama_sampled = LlamaForInference(
-        # ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
-        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Llama3.1-8B-Instruct",
+        ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Meta-Llama3.2-1B-Instruct",
+        # ckpt_dir="/lfs/local/0/fengyuli/.cache/relgpt/.llama/checkpoints/Llama3.1-8B-Instruct",
         temperature=0.5,
     )
 
@@ -100,6 +101,7 @@ four_shot_prompt_sample = [
 def generate_greedy_response(
     four_shot_list=four_shot_prompt_sample, question=transcript[0], islocal=False
 ):
+    # print(llama_greedy.ckpt_dir)
     # Add the 4-shot examples to the prompt
     sampled_question = "\n".join(
         [f"Q: {q['question']}\nA: {q['answer']}" for q in four_shot_list]
@@ -156,6 +158,7 @@ def generate_greedy_response(
 def generate_sampled_responses(
     four_shot_list=four_shot_prompt_sample, question=transcript[0], islocal=False
 ):
+    # print(llama_sampled.ckpt_dir)
     sampled_output = []
     if not islocal:
         prompt_messages = [
