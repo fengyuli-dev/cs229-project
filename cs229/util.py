@@ -2,10 +2,15 @@ import os
 import re
 import json
 from collections import namedtuple, Counter
+from datasets import percent
 from tqdm import tqdm
 import random
+from collections import defaultdict
+
+from traitlets import default
 from cs229.paths import *
-from cs229.inference import generate_greedy_response, generate_sampled_responses
+
+# from cs229.inference import generate_greedy_response, generate_sampled_responses
 import argparse
 import time
 
@@ -81,13 +86,15 @@ def generate_exemplars(N_ex=10, k_shot=4):
     print(f"Exemplars saved at {location}")
 
 
-def generate_dataset_json(percentage_of_known=0.5, train=True):
+def generate_dataset_json(train=True):
     mode = "train" if train else "val"
-    data_knowns = json.load(open(os.path.join(DATASET_PATH, f"{mode}_known.json")))
-    data_unknowns = json.load(open(os.path.join(DATASET_PATH, f"{mode}_unknown.json")))
+    data_knowns = json.load(open(os.path.join(DATASET_PATH, f"{mode}_known_8b.json")))
+    data_unknowns = json.load(
+        open(os.path.join(DATASET_PATH, f"{mode}_unknown_8b.json"))
+    )
     # group the samples by relation
-    sampled_knowns = list()
-    sampled_unknowns = list()
+    sampled_knowns = defaultdict(list)
+    sampled_unknowns = defaultdict(list)
     for relation in in_dist_relations:
         known_this_relation = [
             sample for sample in data_knowns if sample[0] == relation
@@ -96,59 +103,80 @@ def generate_dataset_json(percentage_of_known=0.5, train=True):
             sample for sample in data_unknowns if sample[0] == relation
         ]
         max_size_this_relation = min(
-            len(known_this_relation) / 0.5,
-            len(unknown_this_relation) / 0.5,
+            len(known_this_relation),
+            len(unknown_this_relation),
         )
-        sampled_known_this_relation = random.sample(
-            known_this_relation, int(max_size_this_relation * percentage_of_known)
-        )
-        sampled_unknown_this_relation = random.sample(
-            unknown_this_relation,
-            int(max_size_this_relation * (1 - percentage_of_known)),
-        )
-        print(
-            f"Relation: {relation}, Known: {len(sampled_known_this_relation)}, Unknown: {len(sampled_unknown_this_relation)}"
-        )
-        sampled_knowns.extend(sampled_known_this_relation)
-        sampled_unknowns.extend(sampled_unknown_this_relation)
-    sampled_knowns = [
-        {"input": entry[1], "output": entry[2]} for entry in sampled_knowns
-    ]
-    sampled_unknowns = [
-        {"input": entry[1], "output": entry[2]} for entry in sampled_unknowns
-    ]
+        # print(
+        #     f"Total Counts: {int(max_size_this_relation * 1)}, {max_size_this_relation * 0.8 + max_size_this_relation * 0.2}, {max_size_this_relation * 0.6 + max_size_this_relation * 0.4}",
+        # )
+        # print(
+        #     f"Total Counts Int: {int(max_size_this_relation * 1)}, {int(max_size_this_relation * 0.8) + int(max_size_this_relation * 0.2)}, {int(max_size_this_relation * 0.6) + int(max_size_this_relation * 0.4)}",
+        # )
+        for percentage_of_known in [0, 0.2, 0.4, 0.5, 0.6, 0.8, 1]:
+            count_known = int(max_size_this_relation * percentage_of_known)
+            sampled_known_this_relation = random.sample(
+                known_this_relation, count_known
+            )
+            sampled_unknown_this_relation = random.sample(
+                unknown_this_relation,
+                max_size_this_relation - count_known,
+            )
+            sampled_known_this_relation = [
+                {"input": entry[1], "output": entry[2]}
+                for entry in sampled_known_this_relation
+            ]
+            sampled_unknown_this_relation = [
+                {"input": entry[1], "output": entry[2]}
+                for entry in sampled_unknown_this_relation
+            ]
+            print(
+                f"Relation: {relation}_{percentage_of_known}, Known: {len(sampled_known_this_relation)}, Unknown: {len(sampled_unknown_this_relation)}"
+            )
+            sampled_knowns[percentage_of_known].extend(sampled_known_this_relation)
+            sampled_unknowns[percentage_of_known].extend(sampled_unknown_this_relation)
     # create a string label of date and time
-    date_time = time.strftime("%Y%m%d-%H%M%S")
-    json.dump(
-        (sampled_knowns),
-        open(
-            os.path.join(
-                DATASET_PATH, f"finetuneds_{mode}_known_{percentage_of_known}.json"
+    for percentage_of_known in [0, 0.2, 0.4, 0.5, 0.6, 0.8, 1]:
+        print(f"Saving {mode} dataset for {percentage_of_known}")
+        print(
+            f"Percentage of known: {percentage_of_known}, Known: {len(sampled_knowns[percentage_of_known])}, Unknown: {len(sampled_unknowns[percentage_of_known])}, Total: {len(sampled_knowns[percentage_of_known]) + len(sampled_unknowns[percentage_of_known])}"
+        )
+        json.dump(
+            (sampled_knowns[percentage_of_known]),
+            open(
+                os.path.join(
+                    DATASET_PATH,
+                    "finetune_dataset",
+                    f"{mode}_known_{percentage_of_known}.json",
+                ),
+                "w",
             ),
-            "w",
-        ),
-    )
-    json.dump(
-        (sampled_unknowns),
-        open(
-            os.path.join(
-                DATASET_PATH, f"finetuneds_{mode}_unknown_{percentage_of_known}.json"
+        )
+        json.dump(
+            (sampled_unknowns[percentage_of_known]),
+            open(
+                os.path.join(
+                    DATASET_PATH,
+                    "finetune_dataset",
+                    f"{mode}_unknown_{percentage_of_known}.json",
+                ),
+                "w",
             ),
-            "w",
-        ),
-    )
-    data = sampled_knowns + sampled_unknowns
-    random.shuffle(data)
-    json.dump(
-        (data),
-        open(
-            os.path.join(
-                DATASET_PATH,
-                f"finetuneds_{mode}_composite_{percentage_of_known}.json",
+        )
+        data = (
+            sampled_knowns[percentage_of_known] + sampled_unknowns[percentage_of_known]
+        )
+        random.shuffle(data)
+        json.dump(
+            (data),
+            open(
+                os.path.join(
+                    DATASET_PATH,
+                    "finetune_dataset",
+                    f"{mode}_composite_{percentage_of_known}.json",
+                ),
+                "w",
             ),
-            "w",
-        ),
-    )
+        )
 
 
 def test_all_samples(is_local=False):
@@ -162,6 +190,14 @@ def test_all_samples(is_local=False):
         relation = filename.split(".")[0]
         if relation not in in_dist_relations:
             continue
+        cache_location = os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json")
+        cache = (
+            json.load(open(cache_location))
+            if os.path.exists(cache_location)
+            else dict()
+        )
+        cache_dict.update(cache)
+        breakpoint()
         is_train = filename.split(".")[1] == "train"
         qa_pairs = json.load(
             open(os.path.join(train_dataset if is_train else val_dataset, filename))
@@ -189,6 +225,7 @@ def test_all_samples(is_local=False):
             os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json"), "w"
         ) as file:
             print(f"Saving cache for {relation}")
+            breakpoint()
             json.dump((cache_dict), file)
         cache_dict.clear()
 
@@ -207,26 +244,24 @@ def test_all_samples(is_local=False):
     print(f"# unknown in val: {len(val_unknown)}")
 
 
-def is_known(question, gt_answer, relation, islocal):
-    # Access llama API to check if question-answer pair is known.
-    # Always save inference results to a cache file
-    # cache = json.load(open(os.path.join(LLAMA_CACHE)))
+def load_all_cache():
+    for filename in os.listdir(os.path.join(DATASET_PATH, "llama_cache")):
+        cache = json.load(open(os.path.join(DATASET_PATH, "llama_cache", filename)))
+        cache_dict.update(cache)
 
-    cache_location = os.path.join(DATASET_PATH, "llama_cache", f"{relation}.json")
-    if os.path.exists(cache_location):
-        cache = json.load(open(cache_location, "r"))
-        if question in cache:
-            known_level = cache[question][3]
-            return known_level != "unknown"
+
+def is_known(question, gt_answer, relation, islocal):
+    if question in cache_dict:
+        known_level = cache_dict[question][3]
+        return known_level != "unknown"
 
     # get 4-shot prompt
     prompts = exemplars[relation]
     greedy_answers = list()
     sampled_answers = list()
     for prompt in prompts:
-        question_ls = [question]
-        greedy_ans = generate_greedy_response(prompt, question_ls, islocal)
-        sampled_ans = generate_sampled_responses(prompt, question_ls, islocal)
+        greedy_ans = generate_greedy_response(prompt, question, islocal)
+        sampled_ans = generate_sampled_responses(prompt, question, islocal)
         greedy_answers.append(clean_string(greedy_ans))
         sampled_ans = [clean_string(answer) for answer in sampled_ans]
         sampled_answers.extend(sampled_ans)
@@ -284,6 +319,8 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
+    # load_all_cache()
+
     if args.exemplars:
         generate_exemplars()
     elif args.testall_local:
@@ -291,6 +328,5 @@ if __name__ == "__main__":
     elif args.testall_cloud:
         test_all_samples(is_local=False)
     elif args.gendata:
-        for percentage in [0, 0.2, 0.4, 0.6, 0.8, 1]:
-            generate_dataset_json(percentage_of_known=percentage, train=True)
-            generate_dataset_json(percentage_of_known=percentage, train=False)
+        generate_dataset_json(train=True)
+        generate_dataset_json(train=False)
