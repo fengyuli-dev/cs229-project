@@ -872,7 +872,7 @@ class FullFinetuneRecipeSingleDevice(FTRecipeInterface):
                             step=self.global_step,
                         )
 
-                        if self.global_step % 10 == 0:
+                        if self.global_step % 50 == 0:
                             eval_start = time.perf_counter()
                             val_loss = self._val_loss()
                             val_accuracy = self._val_accuracy()
