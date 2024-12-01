@@ -891,41 +891,41 @@ class FullFinetuneRecipeSingleDevice(FTRecipeInterface):
                             )
 
                             # SWA
-                            swa_start = time.perf_counter()
-                            self._swa_step()
-                            swa_model = self._setup_model(
-                                cfg_model=cfg.model,
-                                enable_activation_checkpointing=self._enable_activation_checkpointing,
-                                enable_activation_offloading=self._enable_activation_offloading,
-                                compile_model=self._compile,
-                                model_state_dict=self.swa_state_dict,
-                            )
+                            # swa_start = time.perf_counter()
+                            # self._swa_step()
+                            # swa_model = self._setup_model(
+                            #     cfg_model=cfg.model,
+                            #     enable_activation_checkpointing=self._enable_activation_checkpointing,
+                            #     enable_activation_offloading=self._enable_activation_offloading,
+                            #     compile_model=self._compile,
+                            #     model_state_dict=self.swa_state_dict,
+                            # )
 
-                            swa_model.set_num_output_chunks(
-                                self._loss_fn.num_output_chunks
-                            )
-                            (
-                                swa_known_accuracy,
-                                swa_unknown_accuracy,
-                                swa_overall_accuracy,
-                            ) = self._train_accuracy(swa_model)
-                            self._metric_logger.log_dict(
-                                {
-                                    "SWA train known accuracy": swa_known_accuracy,
-                                    "SWA train unknown accuracy": swa_unknown_accuracy,
-                                    "SWA train overall accuracy": swa_overall_accuracy,
-                                },
-                                step=self.global_step,
-                            )
+                            # swa_model.set_num_output_chunks(
+                            #     self._loss_fn.num_output_chunks
+                            # )
+                            # (
+                            #     swa_known_accuracy,
+                            #     swa_unknown_accuracy,
+                            #     swa_overall_accuracy,
+                            # ) = self._train_accuracy(swa_model)
+                            # self._metric_logger.log_dict(
+                            #     {
+                            #         "SWA train known accuracy": swa_known_accuracy,
+                            #         "SWA train unknown accuracy": swa_unknown_accuracy,
+                            #         "SWA train overall accuracy": swa_overall_accuracy,
+                            #     },
+                            #     step=self.global_step,
+                            # )
 
-                            del swa_model
-                            # torch.cuda.empty_cache()
-                            print(
-                                f"All eval took {time.perf_counter() - eval_start:.2f} secs"
-                            )
-                            print(
-                                f"SWA took {time.perf_counter() - swa_start:.2f} secs"
-                            )
+                            # del swa_model
+                            # # torch.cuda.empty_cache()
+                            # print(
+                            #     f"All eval took {time.perf_counter() - eval_start:.2f} secs"
+                            # )
+                            # print(
+                            #     f"SWA took {time.perf_counter() - swa_start:.2f} secs"
+                            # )
 
                     # Reset running stats for the next step
                     running_loss = 0
