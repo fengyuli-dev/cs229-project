@@ -317,19 +317,19 @@ class FullFinetuneRecipeSingleDevice(FTRecipeInterface):
             collate_fn=collate_name,
         )
 
-        _, self._train_known_dataloader = self._setup_data(
-            cfg_dataset=cfg.train_known_dataset,
-            shuffle=False,
-            batch_size=cfg.batch_size,
-            collate_fn=collate_name,
-        )
+        # _, self._train_known_dataloader = self._setup_data(
+        #     cfg_dataset=cfg.train_known_dataset,
+        #     shuffle=False,
+        #     batch_size=cfg.batch_size,
+        #     collate_fn=collate_name,
+        # )
 
-        _, self._train_unknown_dataloader = self._setup_data(
-            cfg_dataset=cfg.train_unknown_dataset,
-            shuffle=False,
-            batch_size=cfg.batch_size,
-            collate_fn=collate_name,
-        )
+        # _, self._train_unknown_dataloader = self._setup_data(
+        #     cfg_dataset=cfg.train_unknown_dataset,
+        #     shuffle=False,
+        #     batch_size=cfg.batch_size,
+        #     collate_fn=collate_name,
+        # )
 
         # Finally update the recipe state which can only be correctly set after all of the
         # other components have been initialized and updated.
@@ -876,14 +876,14 @@ class FullFinetuneRecipeSingleDevice(FTRecipeInterface):
                             eval_start = time.perf_counter()
                             val_loss = self._val_loss()
                             val_accuracy = self._val_accuracy()
-                            known_accuracy, unknown_accuracy, overall_accuracy = (
-                                self._train_accuracy()
-                            )
+                            # known_accuracy, unknown_accuracy, overall_accuracy = (
+                            #     self._train_accuracy()
+                            # )
                             self._metric_logger.log_dict(
                                 {
-                                    "training known accuracy": known_accuracy,
-                                    "training unknown accuracy": unknown_accuracy,
-                                    "training overall accuracy": overall_accuracy,
+                                    # "training known accuracy": known_accuracy,
+                                    # "training unknown accuracy": unknown_accuracy,
+                                    # "training overall accuracy": overall_accuracy,
                                     "validation loss": val_loss,
                                     "validation accuracy": val_accuracy,
                                 },

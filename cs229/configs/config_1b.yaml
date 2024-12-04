@@ -27,28 +27,32 @@ tokenizer:
 dataset:
   _component_: torchtune.datasets.instruct_dataset
   source: json
-  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/train_composite_0.2.json
+  data_files:
+    [
+      /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/train_composite_1.json,
+      /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/train_unknown_0.8.json,
+    ]
   split: train
 
-train_known_dataset:
-  _component_: torchtune.datasets.instruct_dataset
-  source: json
-  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/train_known_0.2.json
-  split: train
+# train_known_dataset:
+#   _component_: torchtune.datasets.instruct_dataset
+#   source: json
+#   data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/train_known_0.8.json
+#   split: train
 
-train_unknown_dataset:
-  _component_: torchtune.datasets.instruct_dataset
-  source: json
-  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/train_unknown_0.2.json
-  split: train
+# train_unknown_dataset:
+#   _component_: torchtune.datasets.instruct_dataset
+#   source: json
+#   data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/train_unknown_0.8.json
+#   split: train
 
 val_dataset:
   _component_: torchtune.datasets.instruct_dataset
   source: json
-  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/val_composite_0.2.json
+  data_files: /lfs/local/0/fengyuli/.cache/misc/dataset/finetune_dataset/val_composite_0.5.json
   split: train
 
-seed: 42
+seed: 35
 shuffle: True
 
 # Model Arguments
